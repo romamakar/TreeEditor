@@ -1,0 +1,57 @@
+@{
+    ViewData["Title"] = "Tree Editor";
+}
+
+@section Styles {
+    <style>
+        .container { display:flex; gap:20px }
+        .panel { width:45%; border:1px solid #ddd; padding:8px }
+        button { margin-left:6px }
+        ul { list-style:none; padding-left:18px }
+    </style>
+}
+
+<h1>Tree Editor</h1>
+<div class="container">
+    <div class="panel" id="db-panel">
+        <h3>DBTreeView</h3>
+        <div id="db-root">
+            <p>Loading...</p>
+        </div>
+    </div>
+    <div class="panel" id="cached-panel">
+        <h3>CachedTreeView</h3>
+        <div style="margin-bottom:8px">
+            <button id="refresh-cache" class="btn btn-secondary">Refresh</button>
+            <button id="apply-cache" class="btn btn-primary">Apply</button>
+            <button id="reset-db" class="btn btn-danger">Reset</button>
+        </div>
+        <div id="cached-root">
+            <p>Loading...</p>
+        </div>
+    </div>
+</div>
+
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+
+@section Scripts {
+    <script>
+        // API base URL used by the frontend. Override via appsettings: "ApiBase"
+        window.apiBase = '@(Configuration["ApiBase"] ?? "https://localhost:5001")';
+        // Ensure a per-user client id exists. Persist in localStorage so it survives reloads.
+        (function(){
+            try {
+                var key = 'tree-editor-client-id';
+                var cid = null;
+                try { cid = localStorage.getItem(key); } catch(e) { console.debug('localStorage.getItem failed', e); }
+                if (!cid) {
+                    cid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
+                    try { localStorage.setItem(key, cid); } catch(e) { console.debug('localStorage.setItem failed', e); }
+                }
+                window.client = cid;
+                console.debug('editor: window.client=', window.client);
+            } catch(e) { window.client = 'c-' + Date.now(); }
+        })();
+    </script>
+    <script src="/js/treeeditor.js"></script>
+}
