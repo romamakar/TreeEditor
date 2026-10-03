@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 using TreeEditor.Api.Modules;
 using TreeEditor.Api.Services;
 using TreeEditor.Domain;
@@ -24,11 +25,13 @@ var app = builder.Build();
 app.UseCors();
 
 // Enable Swagger middleware
-if (app.Environment.IsDevelopment() || true)
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
+
+//Enable Scalar API Reference middleware
+app.MapSwagger("/openapi/{documentName}.json");
+app.MapScalarApiReference();
+
 
 // Ensure database and seed
 using (var scope = app.Services.CreateScope())

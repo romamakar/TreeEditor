@@ -58,6 +58,8 @@ Notes:
 - CachedTreeView shows cached elements and supports `edit/add/delete`; changes remain in cache until Apply (POST `/api/cache/apply`) persists them to the DB.
 - Deleting an element marks it and its subtree IsDeleted in the DB using a recursive CTE.
 - New elements in cache use temporary negative ids until Apply assigns real ids.
+- Swagger UI is available at `/swagger` (TreeEditor.Api).
+- Scalar API Reference is available at `/scalar` (TreeEditor.Api).
 
 This repository contains minimal code to demonstrate the required behavior. Build and run using the commands above.
 
