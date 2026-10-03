@@ -4,10 +4,23 @@
 
 @section Styles {
     <style>
-        .container { display:flex; gap:20px }
-        .panel { width:45%; border:1px solid #ddd; padding:8px }
-        button { margin-left:6px }
-        ul { list-style:none; padding-left:18px }
+        /* Ensure viewport filling behavior */
+        html, body { height: 100%; }
+
+        /* Split view: two panels side-by-side, each taking half the available height
+           Subtract a small offset to account for the page title / header. */
+        h1 { margin: 12px 0; }
+        .container { display: flex; gap: 0; height: calc(100vh - 4rem); max-height: calc(100vh - 4rem); }
+
+        .panel { flex: 1 1 50%; border: 1px solid #ddd; padding: 12px; box-sizing: border-box; overflow: auto }
+        /* remove double border between panels */
+        .panel + .panel { border-left: none }
+
+        button { margin-left: 6px }
+        ul { list-style: none; padding-left: 18px }
+        /* make node labels show pointer and underline on hover */
+        .clickable { cursor: pointer; }
+        .clickable:hover { text-decoration: underline; }
     </style>
 }
 

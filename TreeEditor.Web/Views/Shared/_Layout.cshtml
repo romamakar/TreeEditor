@@ -9,6 +9,16 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/TreeEditor.Web.styles.css" asp-append-version="true" />
     @RenderSection("Styles", required: false)
+    <style>
+        /* Ensure the main content can grow to fill the viewport so inner pages
+           that use 100vh-based layouts can occupy full height. */
+        html, body { height: 100%; }
+        body { display: flex; flex-direction: column; min-height: 100vh; }
+        .main-container { flex: 1 1 auto; display: flex; flex-direction: column; }
+        main[role="main"] { flex: 1 1 auto; }
+        /* Make the site name and nav links show pointer cursor and underline on hover */
+        .navbar-brand:hover, .nav-link:hover { cursor: pointer; text-decoration: underline; }
+    </style>
 </head>
 <body>
     <header>
@@ -30,7 +40,7 @@
             </div>
         </nav>
     </header>
-    <div class="container">
+    <div class="container-fluid main-container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>

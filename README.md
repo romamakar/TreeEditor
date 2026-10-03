@@ -5,14 +5,28 @@ Frontend: ASP.NET Core MVC (TreeEditor.Web) serving a small JavaScript UI
 Database: SQLite (tree.db)
 Cache: in-memory per-user caches keyed by client GUID
 
+Prerequisites:
+
+- .NET 10 SDK installed
+
 Run:
-Option A — single command (recommended on Windows PowerShell):
+Option A — single command (recommended):
+
+Windows (PowerShell):
 
 1. From repository root run the helper script which opens two PowerShell windows and starts both projects:
 
    .\run-dev.ps1
 
-   - This opens separate PowerShell windows for TreeEditor.Api and TreeEditor.Web and runs `dotnet run --no-launch-profile` in each.
+   - This opens separate PowerShell windows for TreeEditor.Api and TreeEditor.Web and runs `dotnet run --no-launch-profile` in each on ports 5001 and 5003 respectively.
+
+Unix / macOS:
+
+1. From repository root run the helper script which starts both projects in the background and writes logs to logs/:
+
+   ./run-dev.sh
+
+   - Logs are written to logs/api.log and logs/web.log; use `tail -f` to follow them.
 
 Option B — manual (any platform):
 
