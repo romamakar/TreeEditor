@@ -23,8 +23,8 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build Api
-      run: dotnet build TreeEditor.Api\TreeEditor.Api.csproj --no-restore
+      run: dotnet build TreeEditor.Api/TreeEditor.Api.csproj --no-restore
     - name: Build Wev
-      run: dotnet build TreeEditor.Web\TreeEditor.Web.csproj --no-restore
+      run: dotnet build TreeEditor.Web/TreeEditor.Web.csproj --no-restore
     - name: Test
-      run: dotnet test Tests\TreeEditor.Api.Tests\TreeEditor.Api.Tests.csproj --no-build --verbosity normal
+      run: dotnet test Tests/TreeEditor.Api.Tests/TreeEditor.Api.Tests.csproj --no-build --verbosity normal
