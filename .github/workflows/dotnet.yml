@@ -27,4 +27,4 @@ jobs:
     - name: Build Wev
       run: dotnet build TreeEditor.Web/TreeEditor.Web.csproj --no-restore
     - name: Test
-      run: dotnet test Tests/TreeEditor.Api.Tests/TreeEditor.Api.Tests.csproj --no-build --verbosity normal
+      run: dotnet test Tests/TreeEditor.Api.Tests/TreeEditor.Api.Tests.csproj --verbosity normal
