@@ -2,8 +2,11 @@
 # Tree Editor
 
 Backend: .NET 10 Minimal API (TreeEditor.Api)
+
 Frontend: ASP.NET Core MVC (TreeEditor.Web) serving a small JavaScript UI
+
 Database: SQLite (tree.db)
+
 Cache: in-memory per-user caches keyed by client GUID
 
 Prerequisites:
