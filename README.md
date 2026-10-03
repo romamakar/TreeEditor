@@ -1,3 +1,4 @@
+![.net build and test](https://github.com/romamakar/TreeEditor/actions/workflows/dotnet.yml/badge.svg?branch=master)
 # Tree Editor
 
 Backend: .NET 10 Minimal API (TreeEditor.Api)
