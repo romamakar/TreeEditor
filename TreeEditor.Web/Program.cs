@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Hosting.StaticWebAssets;
+
 namespace TreeEditor.Web
 {
     public class Program
@@ -5,6 +7,10 @@ namespace TreeEditor.Web
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+
+            // Enable Static Web Assets when running from source (prevents runtime error when not published)
+            // This must be called before building the app.
+            StaticWebAssetsLoader.UseStaticWebAssets(builder.Environment, builder.Configuration);
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();

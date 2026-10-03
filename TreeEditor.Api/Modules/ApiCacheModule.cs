@@ -11,7 +11,6 @@ namespace TreeEditor.Api.Modules
     {
         public static void RegisterApiCacheModule(WebApplication app)
         {
-            // Register the IElementCache service as a singleton
             app.MapGet("/api/children", async (int? parentId, AppDbContext db) =>
             {
                 var children = await db.Elements
