@@ -31,8 +31,8 @@ namespace TreeEditor.Api.Modules
             {
                 var el = await db.Elements.FindAsync(id);
                 if (el == null || el.IsDeleted) return Results.NotFound();
-                await cache.LoadToCacheAsync(el);
-                return Results.Ok();
+                var ok = await cache.LoadToCacheAsync(el);
+                return ok ? Results.Ok() : Results.Conflict();
             });
 
             app.MapGet("/api/cache", (IElementCache cache) =>
@@ -65,10 +65,17 @@ namespace TreeEditor.Api.Modules
                 return Results.Ok();
             });
 
-            app.MapPost("/api/reset", async (IElementCache cache, AppDbContext db) =>
+            app.MapPost("/api/reset", async (IElementCache cache, ElementCacheStore store, AppDbContext db) =>
             {
-                // delete and recreate
+                // delete and recreate using explicit seeding with stable IDs by recreating table
+                // Use transaction to ensure consistent state
+
+                using var tx = await db.Database.BeginTransactionAsync();
+
+                // remove all rows
                 db.Elements.RemoveRange(db.Elements);
+                await db.Database.ExecuteSqlRawAsync("DELETE FROM sqlite_sequence WHERE name = 'Elements';");
+
                 await db.SaveChangesAsync();
 
                 var root = new Element { Value = "Root", ParentId = null };
@@ -88,7 +95,11 @@ namespace TreeEditor.Api.Modules
                 db.Elements.Add(a1a);
                 await db.SaveChangesAsync();
 
-                cache.Clear();
+                await tx.CommitAsync();
+
+                // Clear all server caches and persisted per-client caches so reset is global
+                try { store.ClearAll(); } catch { }
+
                 return Results.Ok();
             });
         }

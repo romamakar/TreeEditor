@@ -69,3 +69,6 @@ This repository contains minimal code to demonstrate the required behavior. Buil
 Tests
 - Unit tests for the cache are in tests/TreeEditor.Api.Tests and use an in-memory SQLite connection to exercise Apply logic (recursive CTEs). Run with:
   `dotnet test tests/TreeEditor.Api.Tests`
+
+Acknowledgements
+- Some parts of the service implementation and helper scripts were created with assistance from GitHub Copilot (GPT-5 mini).

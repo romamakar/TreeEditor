@@ -9,7 +9,6 @@ namespace TreeEditor.Api.Services
         private readonly ElementCacheStore _store;
         private readonly IHttpContextAccessor _ctxAccessor;
         private readonly Microsoft.Extensions.Logging.ILogger<PerUserElementCache>? _logger;
-        private const string CookieName = "tree-client-id";
 
         public PerUserElementCache(ElementCacheStore store, IHttpContextAccessor ctxAccessor, Microsoft.Extensions.Logging.ILogger<PerUserElementCache>? logger = null)
         {

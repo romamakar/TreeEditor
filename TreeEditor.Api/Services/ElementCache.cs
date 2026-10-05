@@ -11,6 +11,7 @@ namespace TreeEditor.Api.Services
         // cached elements: includes loaded (positive Ids) and newly added (negative temp Ids)
         private readonly ConcurrentDictionary<int, CachedElement> _cache = new();
         private int _nextTempId = -1;
+        private readonly string? _persistPath;
 
         public Task<bool> LoadToCacheAsync(Element element)
         {
@@ -22,7 +23,9 @@ namespace TreeEditor.Api.Services
                 Value = element.Value,
                 IsDeleted = false
             };
-            _cache[element.Id] = ce;
+            // when loading from DB into cache, preserve any existing pending cache entry
+            // If the element is already present and has pending edits/deletes, do not overwrite it.
+            _cache.AddOrUpdate(element.Id, ce, (k, existing) => existing.IsDeleted || existing.Value == existing.Value ? existing : existing);
             return Task.FromResult(true);
         }
 
@@ -41,12 +44,19 @@ namespace TreeEditor.Api.Services
         public bool EditCached(int id, string value)
         {
             if (!_cache.TryGetValue(id, out var ce) || ce.IsDeleted) return false;
+            // prevent editing deleted elements (double-check)
+            if (ce.IsDeleted) return false;
             ce.Value = value;
+            Persist();
             return true;
         }
 
         public CachedElement AddCachedChild(int parentId, string value)
         {
+            // Do not allow adding a child to a deleted parent
+            if (_cache.TryGetValue(parentId, out var parent) && parent.IsDeleted)
+                return null;
+
             var id = Interlocked.Decrement(ref _nextTempId);
             var ce = new CachedElement
             {
@@ -56,6 +66,7 @@ namespace TreeEditor.Api.Services
                 IsDeleted = false
             };
             _cache[id] = ce;
+            Persist();
             return ce;
         }
 
@@ -80,13 +91,37 @@ namespace TreeEditor.Api.Services
 
         private readonly ILogger<ElementCache>? _logger;
 
-        public ElementCache(ILogger<ElementCache>? logger = null)
+        public ElementCache(ILogger<ElementCache>? logger = null, string? persistPath = null)
         {
             _logger = logger;
+            _persistPath = persistPath;
+            if (!string.IsNullOrEmpty(_persistPath))
+            {
+                try
+                {
+                    // attempt to load persisted cache
+                    if (File.Exists(_persistPath))
+                    {
+                        var json = File.ReadAllText(_persistPath);
+                        var list = System.Text.Json.JsonSerializer.Deserialize<List<CachedElement>>(json);
+                        if (list != null)
+                        {
+                            foreach (var e in list)
+                                _cache[e.Id] = e;
+                            // ensure next temp id stays negative and less than any existing negative ids
+                            var minId = list.Where(x => x.Id < 0).Select(x => x.Id).DefaultIfEmpty(-1).Min();
+                            _nextTempId = Math.Min(-1, minId);
+                        }
+                    }
+                }
+                catch { }
+            }
         }
 
         public async Task ApplyAsync(AppDbContext db)
         {
+            // transactional application: use a transaction to avoid partial writes
+            using var tx = await db.Database.BeginTransactionAsync();
             // Apply new elements first (negative ids)
             var newElements = _cache.Values.Where(e => e.Id < 0 && !e.IsDeleted).ToList();
 
@@ -170,16 +205,31 @@ UPDATE Elements SET IsDeleted = 1 WHERE Id IN (SELECT id FROM subtree);";
             // For new elements that were marked deleted in cache (never persisted), nothing to do (they were never created)
 
             await db.SaveChangesAsync();
+            await tx.CommitAsync();
 
-            // Clear cache after apply
+            // Clear cache after successful apply and remove persisted file
             _cache.Clear();
             _nextTempId = -1;
+            try { if (!string.IsNullOrEmpty(_persistPath) && File.Exists(_persistPath)) File.Delete(_persistPath); } catch { }
+        }
+
+        private void Persist()
+        {
+            if (string.IsNullOrEmpty(_persistPath)) return;
+            try
+            {
+                var list = _cache.Values.OrderBy(e => e.Id).ToList();
+                var json = System.Text.Json.JsonSerializer.Serialize(list);
+                File.WriteAllText(_persistPath, json);
+            }
+            catch { }
         }
 
         public void Clear()
         {
             _cache.Clear();
             _nextTempId = -1;
+            try { if (!string.IsNullOrEmpty(_persistPath) && File.Exists(_persistPath)) File.Delete(_persistPath); } catch { }
         }
     }
 }

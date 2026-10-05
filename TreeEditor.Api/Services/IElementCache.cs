@@ -8,7 +8,7 @@ namespace TreeEditor.Api.Services
         Task<bool> LoadToCacheAsync(Element element);
         List<CachedElement> GetAllCached();
         bool EditCached(int id, string value);
-        CachedElement AddCachedChild(int parentId, string value);
+        CachedElement? AddCachedChild(int parentId, string value);
         bool DeleteCached(int id);
         Task ApplyAsync(AppDbContext db);
         void Clear();

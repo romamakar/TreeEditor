@@ -213,6 +213,12 @@ document.addEventListener('DOMContentLoaded', function(){
         const div = document.createElement('div');
         const span = document.createElement('span');
         span.textContent = (node.isDeleted ? '(deleted) ' : '') + node.value;
+        if (node.isDeleted) {
+            span.className = 'text-muted';
+        } else {
+            span.className = 'clickable';
+            span.dataset.nodeId = node.id;
+        }
         div.appendChild(span);
 
         const editBtn = document.createElement('button');
@@ -233,7 +239,10 @@ document.addEventListener('DOMContentLoaded', function(){
         addBtn.addEventListener('click', async ()=>{
             const val = prompt('Value for new child', 'New child');
             if (val == null) return;
-            await fetch(buildUrl(`/api/cache/${node.id}/add`), mergeOpts({ method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
+            const res = await fetch(buildUrl(`/api/cache/${node.id}/add`), mergeOpts({ method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
+            if (!res.ok) { alert('Failed to add child (parent may be deleted)'); return; }
+            const result = await res.json().catch(()=>null);
+            if (!result) { alert('Add child failed'); return; }
             await refreshCached();
         });
 
