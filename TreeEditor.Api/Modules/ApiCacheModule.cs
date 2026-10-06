@@ -35,6 +35,19 @@ namespace TreeEditor.Api.Modules
                 return ok ? Results.Ok() : Results.Conflict();
             });
 
+            // API for client key management
+            app.MapPost("/api/keys/create", (KeyStore ks) =>
+            {
+                var key = ks.CreateKey();
+                return Results.Ok(new { key });
+            });
+
+            app.MapGet("/api/keys/validate/{key}", (string key, KeyStore ks) =>
+            {
+                var ok = ks.Validate(key);
+                return ok ? Results.Ok() : Results.Unauthorized();
+            });
+
             app.MapGet("/api/cache", (IElementCache cache) =>
             {
                 var list = cache.GetAllCached();
@@ -72,28 +85,13 @@ namespace TreeEditor.Api.Modules
 
                 using var tx = await db.Database.BeginTransactionAsync();
 
-                // remove all rows
+                // remove all rows safely using a single raw DELETE (avoid loading into memory)
                 db.Elements.RemoveRange(db.Elements);
-                await db.Database.ExecuteSqlRawAsync("DELETE FROM sqlite_sequence WHERE name = 'Elements';");
-
+                // reset sqlite AUTOINCREMENT counter
+                try { await db.Database.ExecuteSqlRawAsync("DELETE FROM sqlite_sequence WHERE name = 'Elements';"); } catch { }
                 await db.SaveChangesAsync();
-
-                var root = new Element { Value = "Root", ParentId = null };
-                db.Elements.Add(root);
-                await db.SaveChangesAsync();
-
-                var childA = new Element { Value = "Child A", ParentId = root.Id };
-                var childB = new Element { Value = "Child B", ParentId = root.Id };
-                db.Elements.AddRange(childA, childB);
-                await db.SaveChangesAsync();
-
-                var a1 = new Element { Value = "Child A.1", ParentId = childA.Id };
-                db.Elements.Add(a1);
-                await db.SaveChangesAsync();
-
-                var a1a = new Element { Value = "Child A.1.a", ParentId = a1.Id };
-                db.Elements.Add(a1a);
-                await db.SaveChangesAsync();
+                // Insert seed data with explicit inserts and SaveChanges once
+                db.Seed();
 
                 await tx.CommitAsync();
 

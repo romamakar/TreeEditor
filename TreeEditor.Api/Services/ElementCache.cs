@@ -25,7 +25,9 @@ namespace TreeEditor.Api.Services
             };
             // when loading from DB into cache, preserve any existing pending cache entry
             // If the element is already present and has pending edits/deletes, do not overwrite it.
-            _cache.AddOrUpdate(element.Id, ce, (k, existing) => existing.IsDeleted || existing.Value == existing.Value ? existing : existing);
+            _cache.AddOrUpdate(element.Id, ce, (k, existing) => existing);
+            // ensure persistence is consistent: persist on load as well so disk reflects cache state
+            Persist();
             return Task.FromResult(true);
         }
 

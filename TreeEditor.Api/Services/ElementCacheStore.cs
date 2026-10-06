@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace TreeEditor.Api.Services
 {
@@ -22,7 +23,15 @@ namespace TreeEditor.Api.Services
 
         public ElementCache GetOrCreate(string clientId)
         {
-            return _store.GetOrAdd(clientId, id =>
+            // sanitize clientId to avoid path traversal or invalid file names
+            var safe = (clientId ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(safe)) safe = "anon";
+            // allow only letters, digits, dash and underscore; replace others with '_'
+            safe = Regex.Replace(safe, "[^A-Za-z0-9_-]", "_");
+            // limit length
+            if (safe.Length > 64) safe = safe.Substring(0, 64);
+
+            return _store.GetOrAdd(safe, id =>
             {
                 var persistPath = Path.Combine(_basePath, id + ".json");
                 return new ElementCache(_loggerFactory.CreateLogger<ElementCache>(), persistPath);

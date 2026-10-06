@@ -221,44 +221,49 @@ document.addEventListener('DOMContentLoaded', function(){
         }
         div.appendChild(span);
 
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.className = 'btn btn-sm btn-secondary';
-        editBtn.textContent = 'Edit';
-        editBtn.addEventListener('click', async ()=>{
-            const val = prompt('Edit value for ' + node.value, node.value);
-            if (val == null) return;
-            await fetch(buildUrl(`/api/cache/${node.id}`), mergeOpts({ method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
-            await refreshCached();
-        });
+        // Buttons: only show when node is not deleted
+        if (!node.isDeleted) {
+            const editBtn = document.createElement('button');
+            editBtn.type = 'button';
+            editBtn.className = 'btn btn-sm btn-secondary';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', async ()=>{
+                const val = prompt('Edit value for ' + node.value, node.value);
+                if (val == null) return;
+                const res = await fetch(buildUrl(`/api/cache/${node.id}`), mergeOpts({ method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
+                if (!res.ok) { alert('Edit failed'); return; }
+                await refreshCached();
+            });
 
-        const addBtn = document.createElement('button');
-        addBtn.type = 'button';
-        addBtn.className = 'btn btn-sm btn-outline-success';
-        addBtn.textContent = 'Add Child';
-        addBtn.addEventListener('click', async ()=>{
-            const val = prompt('Value for new child', 'New child');
-            if (val == null) return;
-            const res = await fetch(buildUrl(`/api/cache/${node.id}/add`), mergeOpts({ method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
-            if (!res.ok) { alert('Failed to add child (parent may be deleted)'); return; }
-            const result = await res.json().catch(()=>null);
-            if (!result) { alert('Add child failed'); return; }
-            await refreshCached();
-        });
+            const addBtn = document.createElement('button');
+            addBtn.type = 'button';
+            addBtn.className = 'btn btn-sm btn-outline-success';
+            addBtn.textContent = 'Add Child';
+            addBtn.addEventListener('click', async ()=>{
+                const val = prompt('Value for new child', 'New child');
+                if (val == null) return;
+                const res = await fetch(buildUrl(`/api/cache/${node.id}/add`), mergeOpts({ method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
+                if (!res.ok) { alert('Failed to add child (parent may be deleted)'); return; }
+                const result = await res.json().catch(()=>null);
+                if (!result) { alert('Add child failed'); return; }
+                await refreshCached();
+            });
 
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'btn btn-sm btn-outline-danger';
-        delBtn.textContent = 'Delete';
-        delBtn.addEventListener('click', async ()=>{
-            if (!confirm('Delete this element and all descendants?')) return;
-            await fetch(buildUrl(`/api/cache/${node.id}`), mergeOpts({ method: 'DELETE' }));
-            await refreshCached();
-        });
+            const delBtn = document.createElement('button');
+            delBtn.type = 'button';
+            delBtn.className = 'btn btn-sm btn-outline-danger';
+            delBtn.textContent = 'Delete';
+            delBtn.addEventListener('click', async ()=>{
+                if (!confirm('Delete this element and all descendants?')) return;
+                const res = await fetch(buildUrl(`/api/cache/${node.id}`), mergeOpts({ method: 'DELETE' }));
+                if (!res.ok) { alert('Delete failed'); return; }
+                await refreshCached();
+            });
 
-        div.appendChild(editBtn);
-        div.appendChild(addBtn);
-        div.appendChild(delBtn);
+            div.appendChild(editBtn);
+            div.appendChild(addBtn);
+            div.appendChild(delBtn);
+        }
 
         if (node.children && node.children.length){
             const ul = document.createElement('ul');

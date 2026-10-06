@@ -27,6 +27,22 @@ namespace TreeEditor.Api.Services
             {
                 id = hdr.ToString();
             }
+            // Validate client key with KeyStore if available. If missing/invalid, create a new valid key
+            try
+            {
+                var ks = ctx.RequestServices.GetService(typeof(KeyStore)) as KeyStore;
+                if (ks != null)
+                {
+                    if (string.IsNullOrEmpty(id) || !ks.Validate(id))
+                    {
+                        // create new key and return it to client via response header so client can persist it
+                        var newKey = ks.CreateKey();
+                        try { ctx.Response.Headers["X-Client-Id"] = newKey; } catch { }
+                        id = newKey;
+                    }
+                }
+            }
+            catch { }
             // debug log header and request path
             try { _logger?.LogDebug("PerUserElementCache.GetCache: X-Client-Id='{ClientId}' Path='{Path}'", id ?? "<null>", ctx.Request.Path); } catch {}
             // If header not provided, fall back to a server-generated id (transient) but do not set cookies
