@@ -18,7 +18,7 @@ namespace TreeEditor.Domain
                 .HasOne<Element>()
                 .WithMany()
                 .HasForeignKey(e => e.ParentId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             base.OnModelCreating(modelBuilder);
         }

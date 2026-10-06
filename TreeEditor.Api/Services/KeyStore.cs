@@ -1,6 +1,4 @@
-using System.Collections.Concurrent;
 using System.Text.Json;
-using Microsoft.Extensions.Hosting;
 
 namespace TreeEditor.Api.Services
 {
@@ -9,7 +7,7 @@ namespace TreeEditor.Api.Services
     {
         private readonly string _filePath;
         private readonly object _lock = new object();
-        private readonly HashSet<string> _keys = new();
+        private readonly Dictionary<string, DateTime> _keys = new();
 
         public KeyStore(IHostEnvironment env)
         {
@@ -25,11 +23,11 @@ namespace TreeEditor.Api.Services
             {
                 if (!File.Exists(_filePath)) return;
                 var json = File.ReadAllText(_filePath);
-                var list = JsonSerializer.Deserialize<List<string>>(json) ?? new List<string>();
+                var list = JsonSerializer.Deserialize<Dictionary<string, DateTime>>(json) ?? new Dictionary<string, DateTime>();
                 lock (_lock)
                 {
                     _keys.Clear();
-                    foreach (var k in list) _keys.Add(k);
+                    foreach (var kvp in list) _keys.Add(kvp.Key, kvp.Value);
                 }
             }
             catch { }
@@ -41,7 +39,7 @@ namespace TreeEditor.Api.Services
             {
                 lock (_lock)
                 {
-                    var json = JsonSerializer.Serialize(_keys.ToList());
+                    var json = JsonSerializer.Serialize(_keys);
                     File.WriteAllText(_filePath, json);
                 }
             }
@@ -53,8 +51,26 @@ namespace TreeEditor.Api.Services
             var key = Guid.NewGuid().ToString();
             lock (_lock)
             {
-                _keys.Add(key);
-                Save();
+                _keys.Add(key, DateTime.UtcNow.AddMinutes(15));
+                // append-only write to avoid rewriting the whole file every time
+                try
+                {
+                    Dictionary<string, DateTime> list = new();
+                    if (File.Exists(_filePath))
+                    {
+                        var existing = JsonSerializer.Deserialize<Dictionary<string, DateTime>>(File.ReadAllText(_filePath)) ?? new Dictionary<string, DateTime>();
+                        foreach (var kvp in existing)
+                        {
+                            if (!_keys.ContainsKey(kvp.Key))
+                            {
+                                list.Add(kvp.Key, kvp.Value);
+                            }
+                        }
+                    }
+                    list.Add(key, DateTime.UtcNow.AddMinutes(15));
+                    File.WriteAllText(_filePath, JsonSerializer.Serialize(list));
+                }
+                catch { }
             }
             return key;
         }
@@ -64,7 +80,7 @@ namespace TreeEditor.Api.Services
             if (string.IsNullOrEmpty(key)) return false;
             lock (_lock)
             {
-                return _keys.Contains(key);
+                return _keys.ContainsKey(key) && _keys[key] > DateTime.UtcNow;
             }
         }
 
@@ -76,5 +92,18 @@ namespace TreeEditor.Api.Services
                 if (_keys.Remove(key)) Save();
             }
         }
+
+        public void Refresh(string key)
+        {
+            if (Validate(key))
+            {
+                lock (_lock)
+                {
+                    _keys[key] = DateTime.UtcNow.AddMinutes(15);
+                    Save();
+                }
+            }
+        }
     }
+
 }

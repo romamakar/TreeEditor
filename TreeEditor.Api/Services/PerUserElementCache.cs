@@ -17,75 +17,106 @@ namespace TreeEditor.Api.Services
             _logger = logger;
         }
 
-        private ElementCache GetCache()
+        // Resolve ElementCache and client key for the current request. If client id missing or invalid,
+        // throw UnauthorizedAccessException so callers (and middleware) can direct client to request/renew a key.
+        private (ElementCache cache, string clientId, KeyStore? ks) ResolveCacheAndKey()
         {
             var ctx = _ctxAccessor.HttpContext;
             if (ctx == null) throw new InvalidOperationException("No HttpContext available");
-            // Expect a client id header provided by the frontend (no cookies)
+
             string? id = null;
             if (ctx.Request.Headers.TryGetValue("X-Client-Id", out var hdr) && !string.IsNullOrEmpty(hdr))
             {
                 id = hdr.ToString();
             }
-            // Validate client key with KeyStore if available. If missing/invalid, create a new valid key
-            try
+
+            var ks = ctx.RequestServices.GetService(typeof(KeyStore)) as KeyStore;
+            // If KeyStore is configured, require a valid id for any cache operation.
+            if (ks != null)
             {
-                var ks = ctx.RequestServices.GetService(typeof(KeyStore)) as KeyStore;
-                if (ks != null)
+                if (string.IsNullOrEmpty(id) || !ks.Validate(id))
                 {
-                    if (string.IsNullOrEmpty(id) || !ks.Validate(id))
-                    {
-                        // create new key and return it to client via response header so client can persist it
-                        var newKey = ks.CreateKey();
-                        try { ctx.Response.Headers["X-Client-Id"] = newKey; } catch { }
-                        id = newKey;
-                    }
+                    // invalid or missing key -> signal unauthorized so frontend can redirect / notify user
+                    throw new UnauthorizedAccessException("Client key missing or expired");
                 }
             }
-            catch { }
-            // debug log header and request path
-            try { _logger?.LogDebug("PerUserElementCache.GetCache: X-Client-Id='{ClientId}' Path='{Path}'", id ?? "<null>", ctx.Request.Path); } catch {}
-            // If header not provided, fall back to a server-generated id (transient) but do not set cookies
+
             if (string.IsNullOrEmpty(id))
             {
+                // If no KeyStore present, allow transient ids (not persisted) but still create cache entry
                 id = Guid.NewGuid().ToString();
             }
-            return _store.GetOrCreate(id);
+
+            try { _logger?.LogDebug("PerUserElementCache.ResolveCacheAndKey: X-Client-Id='{ClientId}' Path='{Path}'", id ?? "<null>", ctx.Request.Path); } catch { }
+
+            var cache = _store.GetOrCreate(id);
+            return (cache, id, ks);
         }
 
         public Task<bool> LoadToCacheAsync(Element element)
         {
-            return GetCache().LoadToCacheAsync(element);
+            var (cache, id, ks) = ResolveCacheAndKey();
+            var t = cache.LoadToCacheAsync(element);
+            return t.ContinueWith(tt =>
+            {
+                if (tt.Status == TaskStatus.RanToCompletion && tt.Result && ks != null)
+                {
+                    try { ks.Refresh(id); } catch { }
+                }
+                return tt.Result;
+            });
         }
 
         public List<CachedElement> GetAllCached()
         {
-            return GetCache().GetAllCached();
+            var (cache, id, ks) = ResolveCacheAndKey();
+            var list = cache.GetAllCached();
+            try { if (ks != null) ks.Refresh(id); } catch { }
+            return list;
         }
 
         public bool EditCached(int id, string value)
         {
-            return GetCache().EditCached(id, value);
+            var (cache, clientId, ks) = ResolveCacheAndKey();
+            var ok = cache.EditCached(id, value);
+            try { if (ok && ks != null) ks.Refresh(clientId); } catch { }
+            return ok;
         }
 
         public CachedElement AddCachedChild(int parentId, string value)
         {
-            return GetCache().AddCachedChild(parentId, value);
+            var (cache, clientId, ks) = ResolveCacheAndKey();
+            var ce = cache.AddCachedChild(parentId, value);
+            try { if (ce != null && ks != null) ks.Refresh(clientId); } catch { }
+            return ce;
         }
 
         public bool DeleteCached(int id)
         {
-            return GetCache().DeleteCached(id);
+            var (cache, clientId, ks) = ResolveCacheAndKey();
+            var ok = cache.DeleteCached(id);
+            try { if (ok && ks != null) ks.Refresh(clientId); } catch { }
+            return ok;
         }
 
         public Task ApplyAsync(AppDbContext db)
         {
-            return GetCache().ApplyAsync(db);
+            var (cache, clientId, ks) = ResolveCacheAndKey();
+            return cache.ApplyAsync(db).ContinueWith(tt =>
+            {
+                if (tt.Status == TaskStatus.RanToCompletion && ks != null)
+                {
+                    try { ks.Refresh(clientId); } catch { }
+                }
+                if (tt.IsFaulted) throw tt.Exception!;
+            });
         }
 
         public void Clear()
         {
-            GetCache().Clear();
+            var (cache, clientId, ks) = ResolveCacheAndKey();
+            cache.Clear();
+            try { if (ks != null) ks.Refresh(clientId); } catch { }
         }
     }
 }

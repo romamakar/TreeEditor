@@ -77,6 +77,7 @@ namespace TreeEditor.Api.Services
             if (!_cache.TryGetValue(id, out var ce)) return false;
             // mark as deleted. Also mark all cached descendants as deleted
             MarkDeletedRecursive(id);
+            Persist();
             return true;
         }
 

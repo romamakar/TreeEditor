@@ -23,7 +23,6 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
-// Translate UnauthorizedAccessException thrown during request handling into 401 responses
 app.Use(async (context, next) =>
 {
     try
@@ -36,7 +35,6 @@ app.Use(async (context, next) =>
         await context.Response.WriteAsync("Unauthorized");
     }
 });
-
 app.UseCors();
 
 // Enable Swagger middleware

@@ -36,6 +36,7 @@ namespace TreeEditor.Api.Modules
             });
 
             // API for client key management
+            // Create a key only when explicitly requested via POST and not implicitly on other cache ops.
             app.MapPost("/api/keys/create", (KeyStore ks) =>
             {
                 var key = ks.CreateKey();
@@ -85,12 +86,11 @@ namespace TreeEditor.Api.Modules
 
                 using var tx = await db.Database.BeginTransactionAsync();
 
-                // remove all rows safely using a single raw DELETE (avoid loading into memory)
-                db.Elements.RemoveRange(db.Elements);
+                await db.Elements.ExecuteDeleteAsync();
                 // reset sqlite AUTOINCREMENT counter
                 try { await db.Database.ExecuteSqlRawAsync("DELETE FROM sqlite_sequence WHERE name = 'Elements';"); } catch { }
-                await db.SaveChangesAsync();
-                // Insert seed data with explicit inserts and SaveChanges once
+
+                // Insert seed data with explicit inserts and SaveChanges once to avoid duplicates
                 db.Seed();
 
                 await tx.CommitAsync();

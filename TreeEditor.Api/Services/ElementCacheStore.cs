@@ -51,13 +51,17 @@ namespace TreeEditor.Api.Services
                 try { c.Clear(); } catch { }
             }
             _store.Clear();
-            // also remove persisted files
+            // remove persisted client caches but keep allKeys.json
             try
             {
                 if (Directory.Exists(_basePath))
                 {
                     foreach (var f in Directory.GetFiles(_basePath, "*.json"))
+                    {
+                        var name = Path.GetFileName(f);
+                        if (string.Equals(name, "allKeys.json", StringComparison.OrdinalIgnoreCase)) continue;
                         File.Delete(f);
+                    }
                 }
             }
             catch { }

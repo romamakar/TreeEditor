@@ -5,8 +5,21 @@ document.addEventListener('DOMContentLoaded', function(){
     const applyBtn = document.getElementById('apply-cache');
     const resetBtn = document.getElementById('reset-db');
 
+    // apiFetch: shared wrapper for fetch that handles 401 responses from /api/cache/*
+    async function apiFetch(path, opts){
+        const res = await fetch(buildUrl(path), mergeOpts(opts));
+        try{
+            if (res.status === 401 && path && path.startsWith('/api/cache')){
+                try { sessionStorage.setItem('flashMessage', 'Key is expired'); } catch(e){}
+                // redirect to Home page so user can request/renew key
+                window.location.href = '/';
+            }
+        } catch(e) { /* ignore */ }
+        return res;
+    }
+
     async function apiJson(path, opts){
-        const r = await fetch(buildUrl(path), mergeOpts(opts));
+        const r = await apiFetch(path, opts);
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json().catch(()=>null);
     }
@@ -230,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function(){
             editBtn.addEventListener('click', async ()=>{
                 const val = prompt('Edit value for ' + node.value, node.value);
                 if (val == null) return;
-                const res = await fetch(buildUrl(`/api/cache/${node.id}`), mergeOpts({ method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
+                const res = await apiFetch(`/api/cache/${node.id}`, mergeOpts({ method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
                 if (!res.ok) { alert('Edit failed'); return; }
                 await refreshCached();
             });
@@ -242,7 +255,7 @@ document.addEventListener('DOMContentLoaded', function(){
             addBtn.addEventListener('click', async ()=>{
                 const val = prompt('Value for new child', 'New child');
                 if (val == null) return;
-                const res = await fetch(buildUrl(`/api/cache/${node.id}/add`), mergeOpts({ method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
+                const res = await apiFetch(`/api/cache/${node.id}/add`, mergeOpts({ method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ value: val }) }));
                 if (!res.ok) { alert('Failed to add child (parent may be deleted)'); return; }
                 const result = await res.json().catch(()=>null);
                 if (!result) { alert('Add child failed'); return; }
@@ -255,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function(){
             delBtn.textContent = 'Delete';
             delBtn.addEventListener('click', async ()=>{
                 if (!confirm('Delete this element and all descendants?')) return;
-                const res = await fetch(buildUrl(`/api/cache/${node.id}`), mergeOpts({ method: 'DELETE' }));
+                const res = await apiFetch(`/api/cache/${node.id}`, mergeOpts({ method: 'DELETE' }));
                 if (!res.ok) { alert('Delete failed'); return; }
                 await refreshCached();
             });
@@ -280,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function(){
     // wire buttons
     refreshBtn.addEventListener('click', refreshCached);
     applyBtn.addEventListener('click', async ()=>{
-        await fetch(buildUrl('/api/cache/apply'), mergeOpts({ method: 'POST' }));
+        await apiFetch('/api/cache/apply', mergeOpts({ method: 'POST' }));
         await refreshCached();
         // re-render DB tree and restore expanded nodes so applied changes are visible
         await renderDbRoot();
