@@ -15,7 +15,6 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 // Per-user caches: use a store singleton and a scoped wrapper that selects the cache by client id (cookie)
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddSingleton<TreeEditor.Api.Services.ElementCacheStore>();
-builder.Services.AddSingleton<TreeEditor.Api.Services.KeyStore>();
 builder.Services.AddScoped<IElementCache, TreeEditor.Api.Services.PerUserElementCache>();
 builder.Services.AddCors(options =>
 {

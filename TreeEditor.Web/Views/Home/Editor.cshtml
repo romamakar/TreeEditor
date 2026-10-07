@@ -51,47 +51,23 @@
     <script>
         // API base URL used by the frontend. Override via appsettings: "ApiBase"
         window.apiBase = '@(Configuration["ApiBase"] ?? "https://localhost:5001")';
-        // Ensure a per-user client id exists. Persist in localStorage so it survives reloads.
-        (async function(){
+        // Keep the same cache id across page loads so pending changes remain available.
+        (function(){
             try {
                 var key = 'tree-editor-client-id';
-                var cid = null;
-                try { cid = localStorage.getItem(key); } catch(e) { console.debug('localStorage.getItem failed', e); }
-
-                const apiBase = (window.apiBase || '').replace(/\/$/, '');
-
-                let valid = false;
-                if (cid) {
-                    try {
-                        const res = await fetch(apiBase + '/api/keys/validate/' + encodeURIComponent(cid));
-                        valid = res.ok;
-                    } catch (e) { console.debug('key validate failed', e); valid = false; }
+                var cid = localStorage.getItem(key);
+                if (!cid) {
+                    cid = (typeof crypto !== 'undefined' && crypto.randomUUID)
+                        ? crypto.randomUUID()
+                        : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
+                    localStorage.setItem(key, cid);
                 }
-
-                if (!cid || !valid) {
-                    try {
-                        const createRes = await fetch(apiBase + '/api/keys/create', { method: 'POST' });
-                        if (createRes.ok) {
-                            const j = await createRes.json().catch(()=>null);
-                            cid = (j && j.key) ? j.key : ((typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2,10));
-                            try { localStorage.setItem(key, cid); } catch(e) { console.debug('localStorage.setItem failed', e); }
-                        } else {
-                            // fallback to a local id
-                            cid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
-                            try { localStorage.setItem(key, cid); } catch(e) { console.debug('localStorage.setItem failed', e); }
-                        }
-                    } catch(e) {
-                        console.debug('create key failed', e);
-                        // fallback locally
-                        cid = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2,10);
-                        try { localStorage.setItem(key, cid); } catch(e) { console.debug('localStorage.setItem failed', e); }
-                    }
-                }
-
                 window.client = cid;
                 window.clientId = cid;
-                console.debug('editor: window.client=', window.client);
-            } catch(e) { window.client = 'c-' + Date.now(); window.clientId = window.client; }
+            } catch(e) {
+                window.client = 'c-' + Date.now();
+                window.clientId = window.client;
+            }
         })();
     </script>
     <script src="/js/treeeditor.js"></script>

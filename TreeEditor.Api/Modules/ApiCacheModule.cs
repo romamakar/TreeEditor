@@ -35,20 +35,6 @@ namespace TreeEditor.Api.Modules
                 return ok ? Results.Ok() : Results.Conflict();
             });
 
-            // API for client key management
-            // Create a key only when explicitly requested via POST and not implicitly on other cache ops.
-            app.MapPost("/api/keys/create", (KeyStore ks) =>
-            {
-                var key = ks.CreateKey();
-                return Results.Ok(new { key });
-            });
-
-            app.MapGet("/api/keys/validate/{key}", (string key, KeyStore ks) =>
-            {
-                var ok = ks.Validate(key);
-                return ok ? Results.Ok() : Results.Unauthorized();
-            });
-
             app.MapGet("/api/cache", (IElementCache cache) =>
             {
                 var list = cache.GetAllCached();

@@ -70,6 +70,47 @@ namespace TreeEditor.Api.Tests
         }
 
         [Fact]
+        public async Task PersistedPendingEdit_SurvivesCacheRecreationUntilApply()
+        {
+            var persistPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
+            try
+            {
+                int rootId;
+                using (var db = new AppDbContext(_options))
+                {
+                    var root = new Element { Value = "Root", ParentId = null };
+                    db.Elements.Add(root);
+                    await db.SaveChangesAsync();
+                    rootId = root.Id;
+
+                    var cache = new ElementCache(persistPath: persistPath);
+                    await cache.LoadToCacheAsync(root);
+                    Assert.True(cache.EditCached(rootId, "Pending edit"));
+                }
+
+                var restoredCache = new ElementCache(persistPath: persistPath);
+                Assert.Equal("Pending edit", Assert.Single(restoredCache.GetAllCached()).Value);
+
+                using (var db = new AppDbContext(_options))
+                {
+                    await restoredCache.ApplyAsync(db);
+                }
+
+                using (var db = new AppDbContext(_options))
+                {
+                    var updated = await db.Elements.FindAsync(rootId);
+                    Assert.Equal("Pending edit", updated!.Value);
+                }
+
+                Assert.False(File.Exists(persistPath));
+            }
+            finally
+            {
+                if (File.Exists(persistPath)) File.Delete(persistPath);
+            }
+        }
+
+        [Fact]
         public async Task Apply_DeleteExisting_MarksSubtreeDeleted()
         {
             using var db = new AppDbContext(_options);

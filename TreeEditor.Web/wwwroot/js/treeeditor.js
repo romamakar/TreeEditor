@@ -5,17 +5,9 @@ document.addEventListener('DOMContentLoaded', function(){
     const applyBtn = document.getElementById('apply-cache');
     const resetBtn = document.getElementById('reset-db');
 
-    // apiFetch: shared wrapper for fetch that handles 401 responses from /api/cache/*
+    // apiFetch: shared wrapper that attaches the persistent client cache id.
     async function apiFetch(path, opts){
-        const res = await fetch(buildUrl(path), mergeOpts(opts));
-        try{
-            if (res.status === 401 && path && path.startsWith('/api/cache')){
-                try { sessionStorage.setItem('flashMessage', 'Key is expired'); } catch(e){}
-                // redirect to Home page so user can request/renew key
-                window.location.href = '/';
-            }
-        } catch(e) { /* ignore */ }
-        return res;
+        return fetch(buildUrl(path), mergeOpts(opts));
     }
 
     async function apiJson(path, opts){
